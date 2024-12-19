@@ -46,4 +46,8 @@ public class Category
     {
         this.description = description;
     }
+
+    public Category orElseThrow(Object o) {
+    return null;
+    }
 }
