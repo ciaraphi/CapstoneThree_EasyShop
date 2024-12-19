@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import org.yearup.data.CategoryDao;
 import org.yearup.data.ProductDao;
 import org.yearup.models.Category;
@@ -41,6 +42,7 @@ public CategoriesController(CategoryDao categoryDao, ProductDao productDao){
        Category category = categoryDao.getById(id);
         if (category == null) {
             System.out.println("Category with id" + id + "not found.");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
 
         }
         return category;

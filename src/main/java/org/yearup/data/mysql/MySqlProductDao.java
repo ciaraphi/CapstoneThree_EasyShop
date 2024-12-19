@@ -5,6 +5,7 @@ import org.yearup.models.Product;
 import org.yearup.data.ProductDao;
 
 import javax.sql.DataSource;
+import javax.xml.namespace.QName;
 import java.math.BigDecimal;
 import java.sql.*;
 import java.util.ArrayList;
@@ -19,32 +20,41 @@ public class MySqlProductDao extends MySqlDaoBase implements ProductDao
     }
 
     @Override
-    public List<Product> search(Integer categoryId, BigDecimal minPrice, BigDecimal maxPrice, String color)
-    {
+    public List<Product> search(Integer categoryId, BigDecimal minPrice, BigDecimal maxPrice, String color) {
         List<Product> products = new ArrayList<>();
 
+    // Use defaults if the values are null
+        categoryId = (categoryId == null) ? -1 : categoryId;
+        minPrice = (minPrice == null) ? new BigDecimal("-1") : minPrice;
+        maxPrice = (maxPrice == null) ? new BigDecimal("-1") : maxPrice;
+        color = (color == null) ? "" : color.trim().toLowerCase();
+
+
+        // Correct SQL query
         String sql = "SELECT * FROM products " +
                 "WHERE (category_id = ? OR ? = -1) " +
-                "   AND (price <= ? OR ? = -1) " +
-                "   AND (color = ? OR ? = '') ";
-
-        categoryId = categoryId == null ? -1 : categoryId;
-        minPrice = minPrice == null ? new BigDecimal("-1") : minPrice;
-        maxPrice = maxPrice == null ? new BigDecimal("-1") : maxPrice;
-        color = color == null ? "" : color;
+                "AND (price >= ? OR ? = -1) " +
+                "AND (price <= ? OR ? = -1) " +
+                "AND (color = ? OR ? = '') ";
 
         try (Connection connection = getConnection())
         {
             PreparedStatement statement = connection.prepareStatement(sql);
-            statement.setInt(1, categoryId);
-            statement.setInt(2, categoryId);
-            statement.setBigDecimal(3, minPrice);
-            statement.setBigDecimal(4, minPrice);
-            statement.setString(5, color);
-            statement.setString(6, color);
 
+            // Set the prepared statement parameters
+            statement.setInt(1, categoryId);   // category_id filter
+            statement.setInt(2, categoryId);   // OR condition with categoryId
+            statement.setBigDecimal(3, minPrice); // min price
+            statement.setBigDecimal(4, minPrice); // min price
+            statement.setBigDecimal(5, maxPrice); // max price
+            statement.setBigDecimal(6, maxPrice); // OR condition with price range
+            statement.setString(7, color);       // color filter
+            statement.setString(8, color);       // OR condition with empty string
+
+            // Execute the query
             ResultSet row = statement.executeQuery();
 
+            // Collect results
             while (row.next())
             {
                 Product product = mapRow(row);
@@ -53,7 +63,7 @@ public class MySqlProductDao extends MySqlDaoBase implements ProductDao
         }
         catch (SQLException e)
         {
-            throw new RuntimeException(e);
+            throw new RuntimeException("SQL error during product search", e);
         }
 
         return products;
@@ -139,16 +149,16 @@ public class MySqlProductDao extends MySqlDaoBase implements ProductDao
 
                 if (generatedKeys.next()) {
                     // Retrieve the auto-incremented ID
-                    int orderId = generatedKeys.getInt(1);
+                    int productId = generatedKeys.getInt(1);
 
                     // get the newly inserted category
-                    return getById(orderId);
+                    return getById(productId);
                 }
             }
         }
         catch (SQLException e)
         {
-            throw new RuntimeException(e);
+            throw new RuntimeException("SQL Error in method <method_name>: " + e.getMessage(),e);
         }
         return null;
     }
